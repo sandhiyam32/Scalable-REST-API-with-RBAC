@@ -1,0 +1,216 @@
+{
+  "info": {
+    "name": "Scalable REST API with RBAC",
+    "description": "JWT-authenticated REST API with Role-Based Access Control",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api/v1" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/register/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"john\",\n  \"email\": \"john@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"password2\": \"SecurePass123!\",\n  \"role\": \"user\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"id\": 1,\n  \"username\": \"john\",\n  \"email\": \"john@example.com\",\n  \"role\": \"user\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', json.access);",
+                  "pm.collectionVariables.set('refresh_token', json.refresh);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/login/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"john\",\n  \"password\": \"SecurePass123!\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"access\": \"<jwt_access_token>\",\n  \"refresh\": \"<jwt_refresh_token>\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/auth/token/refresh/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/auth/logout/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/auth/profile/"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/auth/profile/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newemail@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Users (Admin Only)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/auth/users/"
+          },
+          "response": [
+            {
+              "name": "403 Forbidden (non-admin)",
+              "status": "Forbidden",
+              "code": 403,
+              "body": "{\n  \"status\": \"error\",\n  \"code\": 403,\n  \"errors\": { \"detail\": [\"You do not have permission to perform this action.\"] }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "List Tasks",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/tasks/",
+              "host": ["{{base_url}}"],
+              "path": ["tasks", ""],
+              "query": [
+                { "key": "status", "value": "todo", "disabled": true },
+                { "key": "priority", "value": "high", "disabled": true },
+                { "key": "search", "value": "bug", "disabled": true },
+                { "key": "ordering", "value": "-created_at", "disabled": true },
+                { "key": "page", "value": "1", "disabled": true },
+                { "key": "page_size", "value": "10", "disabled": true }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"count\": 1,\n  \"total_pages\": 1,\n  \"next\": null,\n  \"previous\": null,\n  \"results\": [\n    {\n      \"id\": 1,\n      \"title\": \"Fix login bug\",\n      \"description\": \"JWT token not refreshing\",\n      \"status\": \"todo\",\n      \"priority\": \"high\",\n      \"assigned_to\": null,\n      \"assigned_to_username\": null,\n      \"created_by\": \"admin\",\n      \"created_at\": \"2024-01-01T10:00:00Z\",\n      \"updated_at\": \"2024-01-01T10:00:00Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Task (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/tasks/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Fix login bug\",\n  \"description\": \"JWT token not refreshing correctly\",\n  \"status\": \"todo\",\n  \"priority\": \"high\",\n  \"assigned_to\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Task",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/tasks/1/"
+          }
+        },
+        {
+          "name": "Update Task (Admin Only)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": "{{base_url}}/tasks/1/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Task (Admin Only)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/tasks/1/"
+          }
+        }
+      ]
+    }
+  ]
+}
